@@ -33,16 +33,6 @@ int main() {
     cout << "Enter Number of Labs: ";
     cin >> numLabs;
 
-    if(numTeachers < numClasses){
-        cout << "\n❌ Deadlock Possible! Not enough teachers.\n";
-        return 0;
-    }
-
-    if(numRooms < numClasses){
-        cout << "\n❌ Deadlock Possible! Not enough rooms.\n";
-        return 0;
-    }
-
     vector<string> days = {"Monday","Tuesday","Wednesday","Thursday","Friday"};
 
     vector<string> timeSlots = {
@@ -58,44 +48,91 @@ int main() {
         vector<vector<string>>(5,
             vector<string>(totalSlots)));
 
-    // Track teacher availability
+    // Teacher busy tracker
     vector<vector<bool>> teacherBusy(numTeachers,
         vector<bool>(5*totalSlots,false));
 
-    int teacherIndex = 0;
+    // Teacher workload tracker
+    vector<int> teacherHours(numTeachers, 0);
 
+    const int MAX_HOURS = 18;
+    const int LECTURE_HOURS = 6;
+    const int PRACTICAL_HOURS = 10;
+
+    // BASIC RESOURCE CHECK
+    if(numTeachers < numClasses){
+        cout << "\n❌ Deadlock Possible! Not enough teachers.\n";
+        return 0;
+    }
+
+    if(numRooms < numClasses){
+        cout << "\n❌ Deadlock Possible! Not enough rooms.\n";
+        return 0;
+    }
+
+    // TIMETABLE GENERATION
     for(int c=0;c<numClasses;c++){
         for(int d=0;d<5;d++){
             for(int s=0;s<totalSlots;s++){
 
                 if(s==4){
                     timetable[c][d][s] = "BREAK";
+                    continue;
                 }
-                else{
-                    bool assigned = false;
 
-                    for(int t=0;t<numTeachers;t++){
+                bool assigned = false;
 
-                        int timeKey = d*totalSlots + s;
+                for(int t=0;t<numTeachers;t++){
 
-                        if(!teacherBusy[t][timeKey]){
-                            timetable[c][d][s] = teachers[t] + "(R" + to_string(c+1) + ")";
-                            teacherBusy[t][timeKey] = true;
-                            assigned = true;
-                            break;
+                    int timeKey = d*totalSlots + s;
+
+                    if(!teacherBusy[t][timeKey] && teacherHours[t] < MAX_HOURS){
+
+                        // Practical slots (afternoon)
+                        if(s >= 5 && teacherHours[t] < PRACTICAL_HOURS){
+                            timetable[c][d][s] = teachers[t] + "(Lab)";
                         }
-                    }
+                        else{
+                            timetable[c][d][s] = teachers[t] + "(Lec)";
+                        }
 
-                    if(!assigned){
-                        cout << "\n❌ Deadlock Detected! Increase Teachers.\n";
-                        return 0;
+                        teacherBusy[t][timeKey] = true;
+                        teacherHours[t]++;
+                        assigned = true;
+                        break;
                     }
+                }
+
+                if(!assigned){
+                    cout << "\n❌ Deadlock Detected! Teachers Overloaded.\n";
+                    return 0;
                 }
             }
         }
     }
 
-    // PRINT ALL TIMETABLES
+    // 🎯 ACTIVITY SLOT FEATURE
+    char choice;
+    cout << "\nDo you want to add Activity Slot? (y/n): ";
+    cin >> choice;
+
+    if(choice == 'y' || choice == 'Y'){
+        string activityClass;
+        cout << "Enter Class Name for Activity: ";
+        cin >> activityClass;
+
+        for(int c=0;c<numClasses;c++){
+            if(classNames[c] == activityClass){
+
+                // Add activity on Friday last slot
+                timetable[c][4][6] = "Activity";
+
+                cout << "✅ Activity added to " << activityClass << " on Friday 3-4\n";
+            }
+        }
+    }
+
+    // PRINT TIMETABLE
     for(int c=0;c<numClasses;c++){
 
         cout << "\n\n==============================================\n";
@@ -116,7 +153,7 @@ int main() {
         }
     }
 
-    cout << "\n✅ Professional Deadlock-Free Timetable Generated Successfully!\n";
+    cout << "\n✅ Smart Deadlock-Free Timetable Generated!\n";
 
     return 0;
 }
